@@ -35,7 +35,7 @@ export const requestAdminOtp = createServerFn({ method: "POST" })
         },
       },
     });
-    const { error: e2 } = await pub.auth.signInWithOtp({ email: data.email, options: { shouldCreateUser: false, emailRedirectTo: data.redirect } });
+    const { error: e2 } = await pub.auth.signInWithOtp({ email: data.email, options: { shouldCreateUser: false, ...(data.redirect ? { emailRedirectTo: data.redirect } : {}) } });
     if (e2) throw new Error(e2.message.includes("rate") ? "Too many codes requested. Please wait a minute." : "Could not send the code. Please try again.");
     return { ok: true };
   });
