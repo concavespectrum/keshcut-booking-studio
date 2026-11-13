@@ -26,7 +26,7 @@ async function slots(){
  if(!d){tm.append(el('option',{value:'',text:'Choose a date first'}));return}
  if(!dur){tm.append(el('option',{value:'',text:'Choose a service first'}));return}
  tm.append(el('option',{value:'',text:'Loading times…'}));
- try{const b=busyCache[d]&&Date.now()-busyCache[d].t<15000?busyCache[d].v:(busyCache[d]={t:Date.now(),v:(await api('GET','?busy='+d)).busy}).v;
+ try{const b=busyCache[d]&&Date.now()-busyCache[d].t<15000?busyCache[d].v:(busyCache[d]={t:Date.now(),v:((await api('GET','?busy='+d)).busy||[])}).v;
   const busy=b.map(([s,e])=>[Date.parse(s),Date.parse(e)]),opts=[];
   for(let m=OPEN;m+dur<=CLOSE;m+=STEP){const hh=String(m/60|0).padStart(2,'0'),mm=String(m%60).padStart(2,'0'),st=Date.parse(`${d}T${hh}:${mm}:00+05:45`),en=st+dur*60000;
    if(st<Date.now()+15*60000)continue;if(busy.some(([s,e])=>st<e&&en>s))continue;
