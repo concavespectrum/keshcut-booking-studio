@@ -28,3 +28,11 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Project rules
+- The homepage is the original static site (`src/site/index.html` + `public/js|css`), served raw by the `/` route; edit it in place, never port it to React — preserves the hand-built design and animations.
+- Customers have no accounts: identity is the HttpOnly `kc_sid` cookie (only its SHA-256 is stored in `customer_sessions`); a phone number alone never grants access.
+- All customer reads/writes go through `/api/public/kc` → `kc_*` SECURITY DEFINER SQL functions (service_role only) — one round trip per action, rules enforced in the database.
+- Booking overlap is prevented by the `bookings_no_overlap` exclusion constraint; prices and durations come only from `public.services`.
+- Customer live updates use data-free `realtime.send` pings on a random per-session topic, then refetch; admins use RLS-filtered postgres_changes.
+- Admin access = `admin_allowlist` (email + phone, checked server-side before OTP) and `is_admin()` in RLS.

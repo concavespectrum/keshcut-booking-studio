@@ -344,7 +344,7 @@ function Thread({ id, tick }: { id: string; tick: number }) {
     // Incremental fetch: only rows newer than the last one we have.
     supabase.from("messages").select("id,sender,body,created_at").eq("conversation_id", id).gt("id", last).order("id", { ascending: false }).limit(200)
       .then(({ data }) => {
-        if (data?.length) setMsgs((m) => [...m, ...data.reverse().filter((x) => !m.some((y) => y.id === x.id))]);
+        if (data?.length) setMsgs((m) => [...m, ...data.filter((x) => !m.some((y) => y.id === x.id))].sort((a, b) => a.id - b.id));
       });
     supabase.from("conversations").update({ unread_admin: 0 }).eq("id", id).gt("unread_admin", 0).then(() => {});
   }, [id, tick]); // eslint-disable-line react-hooks/exhaustive-deps
