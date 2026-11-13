@@ -67,21 +67,26 @@ function AdminPage() {
   );
 }
 
+const PHONE_KEY = "kc_admin_phone";
+
 function VerifyAccess({ onVerified }: { onVerified: () => void }) {
   const verify = useServerFn(verifyAdminSession);
   const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  return <form className="mx-auto mt-12 w-[calc(100%-2rem)] max-w-sm space-y-4 border border-border p-6 sm:mt-24 sm:p-8" onSubmit={async e => {
-    e.preventDefault(); setBusy(true); setError("");
-    try { await verify({ data: { phone } }); onVerified(); }
-    catch (e) { setError((e as Error).message); }
+  const run = useCallback(async (p: string) => {
+    setBusy(true); setError("");
+    try { await verify({ data: { phone: p } }); localStorage.setItem(PHONE_KEY, p); onVerified(); }
+    catch (e) { localStorage.removeItem(PHONE_KEY); setError((e as Error).message); }
     finally { setBusy(false); }
-  }}>
+  }, [verify, onVerified]);
+  // Same device that requested the link: finish phone check automatically.
+  useEffect(() => { const saved = localStorage.getItem(PHONE_KEY); if (saved) run(saved); }, [run]);
+  return <form className="mx-auto mt-12 w-[calc(100%-2rem)] max-w-sm space-y-4 border border-border p-6 sm:mt-24 sm:p-8" onSubmit={e => { e.preventDefault(); run(phone); }}>
     <h1 className="font-serif text-3xl">Verify admin access</h1>
     <Input type="tel" className="text-base" autoComplete="tel" aria-label="Authorized phone number" placeholder="Authorized phone number" value={phone} onChange={e => setPhone(e.target.value)} required />
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-    <Button disabled={busy}>Verify</Button>
+    <Button disabled={busy}>{busy ? "Checking…" : "Verify"}</Button>
     <Button type="button" variant="outline" onClick={() => supabase.auth.signOut()}>Sign out</Button>
   </form>;
 }
@@ -90,8 +95,7 @@ function Login() {
   const send = useServerFn(requestAdminOtp);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [code, setCode] = useState("");
-  const [step, setStep] = useState<1 | 2>(1);
+  const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const submit = async (e: React.FormEvent) => {
@@ -99,13 +103,9 @@ function Login() {
     setErr("");
     setBusy(true);
     try {
-      if (step === 1) {
-        await send({ data: { email, phone } });
-        setStep(2);
-      } else {
-        const { error } = await supabase.auth.verifyOtp({ email: email.trim().toLowerCase(), token: code.trim(), type: "email" });
-        if (error) throw new Error("That code is wrong or has expired.");
-      }
+      await send({ data: { email, phone, redirect: window.location.origin } });
+      localStorage.setItem(PHONE_KEY, phone);
+      setSent(true);
     } catch (x) {
       setErr((x as Error).message);
     } finally {
@@ -115,21 +115,18 @@ function Login() {
   return (
     <form onSubmit={submit} className="mx-auto mt-12 w-[calc(100%-2rem)] max-w-sm space-y-4 border border-border p-6 sm:mt-24 sm:p-8">
       <h1 className="font-serif text-3xl">KeshCut Studio admin</h1>
-      {step === 1 ? (
+      {!sent ? (
         <>
           <Input type="email" className="text-base" aria-label="Authorized Gmail address" autoComplete="email" placeholder="Authorized Gmail address" value={email} onChange={(e) => setEmail(e.target.value)} required />
           <Input type="tel" className="text-base" aria-label="Authorized phone number" autoComplete="tel" placeholder="Authorized phone number" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+          {err && <p className="text-sm text-destructive">{err}</p>}
+          <Button className="w-full" disabled={busy}>{busy ? "Sending…" : "Log in"}</Button>
         </>
       ) : (
         <>
-          <p className="text-sm text-muted-foreground">We sent a sign-in code to {email}. Enter it below, or open the link in that email.</p>
-          <Input className="text-base" aria-label="Code from email" autoComplete="one-time-code" inputMode="numeric" placeholder="Code from email" value={code} onChange={(e) => setCode(e.target.value)} required />
+          <p className="text-sm text-muted-foreground">A login link has been sent to your Gmail. Open it on this device to go straight to the admin page.</p>
+          <Button type="button" variant="link" onClick={() => setSent(false)}>Start again</Button>
         </>
-      )}
-      {err && <p className="text-sm text-destructive">{err}</p>}
-      <Button className="w-full" disabled={busy}>{step === 1 ? "Send code" : "Sign in"}</Button>
-      {step === 2 && (
-        <Button type="button" variant="link" onClick={() => setStep(1)}>Start again</Button>
       )}
     </form>
   );

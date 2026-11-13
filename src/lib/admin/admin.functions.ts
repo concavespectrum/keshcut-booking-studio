@@ -7,10 +7,15 @@ import { bookingsCsv, type ExportBooking } from "./csv";
 // Step 1 of admin sign-in: the Gmail address AND phone must match the allowlist
 // (checked in the database). Only then is an email OTP sent.
 export const requestAdminOtp = createServerFn({ method: "POST" })
-  .inputValidator((d: { email: string; phone: string }) => ({
-    email: String(d?.email ?? "").trim().toLowerCase().slice(0, 254),
-    phone: String(d?.phone ?? "").slice(0, 20),
-  }))
+  .inputValidator((d: { email: string; phone: string; redirect?: string }) => {
+    let redirect: string | undefined;
+    try { const u = new URL(String(d?.redirect ?? "")); if (/^https?:$/.test(u.protocol)) redirect = `${u.origin}/admin`; } catch { /* ignore */ }
+    return {
+      email: String(d?.email ?? "").trim().toLowerCase().slice(0, 254),
+      phone: String(d?.phone ?? "").slice(0, 20),
+      redirect,
+    };
+  })
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: ok, error } = await supabaseAdmin.rpc("kc_admin_check", { p_email: data.email, p_phone: data.phone });
@@ -30,7 +35,7 @@ export const requestAdminOtp = createServerFn({ method: "POST" })
         },
       },
     });
-    const { error: e2 } = await pub.auth.signInWithOtp({ email: data.email, options: { shouldCreateUser: false } });
+    const { error: e2 } = await pub.auth.signInWithOtp({ email: data.email, options: { shouldCreateUser: false, emailRedirectTo: data.redirect } });
     if (e2) throw new Error(e2.message.includes("rate") ? "Too many codes requested. Please wait a minute." : "Could not send the code. Please try again.");
     return { ok: true };
   });
