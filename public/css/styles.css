@@ -189,3 +189,12 @@ dialog.vid{width:fit-content;max-width:calc(100vw - 16px)}
 .ticket input[type=checkbox]{color-scheme:light}
 .ticket textarea{display:block;width:100%;padding:10px;border:1px solid currentColor;background:transparent;color:inherit;border-radius:2px;font:inherit;resize:vertical}
 .kc-custom-text{white-space:pre-wrap;overflow-wrap:anywhere}
+.kc-chatf{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;flex-shrink:0}
+.kc-chatf textarea{min-width:0;resize:vertical;max-height:160px}
+.kc-chat .lg-head{flex-shrink:0}.kc-chat .lg-card{max-height:calc(100dvh - 32px)}
+.kc-chat .kc-msgs{min-height:80px}.kc-chatid{flex-shrink:0}
+.kc-chat .kc-mut{color:inherit;opacity:.7}
+.ticket textarea:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+.kc-bk,.kc-mine h3{overflow-wrap:anywhere}
+.kc-chk{min-height:32px}.kc-chk input{flex-shrink:0}
+@media(max-width:759px){.ticket textarea,.kc-chatf textarea,.kc-chatid input{font-size:16px}.kc-row .lk{min-height:44px}.kc-chat-btn{bottom:calc(8px + env(safe-area-inset-bottom,0px));padding:8px 12px;min-height:44px}.kc-col{padding-bottom:48px}.kc-chat .lg-head{padding:10px 16px}.kc-chat .lg-head h2{font-size:1.35rem}}

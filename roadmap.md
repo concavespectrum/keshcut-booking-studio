@@ -1,4 +1,6 @@
 # KeshCut updates
+- [x] Check desktop/mobile customer and admin workflows; resolve usability issues without redesign.
+- [x] Validate deployment configuration, security checks and production readiness.
 - [x] Preserve styling; update bot labels and Ask navigation.
 - [x] Add training, courses and required custom service details to bookings and modifications.
 - [x] Update owner verification; enforce admin sessions on backend.

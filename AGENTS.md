@@ -38,3 +38,4 @@ use the editor.
 - Admin access requires an allowlisted email and phone both before OTP and for each authenticated session; `is_admin()` checks a server-created, expiring session grant in RLS so email-only links cannot bypass phone verification.
 - Custom-service booking wrappers validate and store details atomically with the existing customer RPCs; reuse server-owned service durations and ownership checks.
 - Ticket exports use authenticated server functions with RLS and CSV formula escaping; permanent deletion uses an admin-checking SQL function to cascade only ticket services and update visit counts.
+- Generate crawler URLs and browser safety headers in the server entry so published and custom domains never expose placeholder sitemap URLs.

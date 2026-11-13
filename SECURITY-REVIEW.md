@@ -9,8 +9,12 @@
 - Permanent deletion checks admin rights inside SQL, removes only the ticket and dependent service rows, corrects completed visits, preserves customer/chat records, and notifies the customer's live channel.
 - Browser checks passed: multi-service booking, mandatory Others, editing/removing details, overlapping requests, same-phone different-browser isolation, chat, live admin reply, CSV download, cancelled/confirmed deletion, search/history updates, live customer deletion, and mobile layout.
 - Direct anonymous data reads, deletion and unauthenticated export were refused. Unit and routing tests passed.
+- Production-readiness review: customer booking/chat and authenticated admin tabs checked at 320, 390, 768 and 1280px; customer screens also checked at 1920px. Mobile forms use 16px inputs and 44px admin touch controls; chat adapts to dynamic viewport height.
+- Backend scan found only the intentionally public service catalog. Linter warnings for admin SECURITY DEFINER entry points are intentional: each performs its own permission check. Session/allowlist tables with no public policies are deliberately locked.
+- Deployment entry generates domain-specific crawler responses and adds browser safety headers; homepage already replaces canonical/social placeholders with its request origin. Images are local, modest-sized, and non-primary media are lazy loaded.
 
 ## Limitations and assumptions
+- Unauthenticated server-function exports are denied but the framework returns HTTP 500 rather than 401; no data is returned and authenticated exports pass.
 - Real email-code delivery was not exercised; tests used the platform's managed developer session followed by real phone verification.
 - The platform requires `.env` to remain tracked and refuses removal/ignore changes. It contains public URL/key settings only; no service-role key or other private credential was found. Private keys are loaded only inside server handlers.
 - New training/course/Other appointments use provisional 30-minute durations and no published prices, matching the existing scheduling assumptions until the studio supplies actual durations.

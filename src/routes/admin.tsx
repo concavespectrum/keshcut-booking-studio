@@ -42,17 +42,17 @@ function AdminPage() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data } = supabase.auth.onAuthStateChange((ev, s) => {
-      if (ev === "SIGNED_IN" || ev === "SIGNED_OUT" || ev === "USER_UPDATED") setSession(s);
+      if (ev === "SIGNED_IN" || ev === "SIGNED_OUT" || ev === "USER_UPDATED" || ev === "TOKEN_REFRESHED") setSession(s);
     });
     return () => data.subscription.unsubscribe();
   }, []);
   useEffect(() => {
     if (!session) return setIsAdmin(null);
     supabase.rpc("is_admin").then(({ data }) => setIsAdmin(!!data));
-  }, [session?.user.id]);
+  }, [session]);
 
   return (
-    <div className="dark min-h-screen bg-background text-foreground">
+    <div className="dark flow-root min-h-screen bg-background text-foreground">
       <Toaster />
       {!session ? (
         <Login />
@@ -72,14 +72,14 @@ function VerifyAccess({ onVerified }: { onVerified: () => void }) {
   const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  return <form className="mx-auto mt-24 max-w-sm space-y-4 border border-border p-8" onSubmit={async e => {
+  return <form className="mx-auto mt-12 w-[calc(100%-2rem)] max-w-sm space-y-4 border border-border p-6 sm:mt-24 sm:p-8" onSubmit={async e => {
     e.preventDefault(); setBusy(true); setError("");
     try { await verify({ data: { phone } }); onVerified(); }
     catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }}>
     <h1 className="font-serif text-3xl">Verify admin access</h1>
-    <Input type="tel" aria-label="Authorized phone number" placeholder="Authorized phone number" value={phone} onChange={e => setPhone(e.target.value)} required />
+    <Input type="tel" className="text-base" autoComplete="tel" aria-label="Authorized phone number" placeholder="Authorized phone number" value={phone} onChange={e => setPhone(e.target.value)} required />
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     <Button disabled={busy}>Verify</Button>
     <Button type="button" variant="outline" onClick={() => supabase.auth.signOut()}>Sign out</Button>
@@ -113,23 +113,23 @@ function Login() {
     }
   };
   return (
-    <form onSubmit={submit} className="mx-auto mt-24 max-w-sm space-y-4 border border-border p-8">
+    <form onSubmit={submit} className="mx-auto mt-12 w-[calc(100%-2rem)] max-w-sm space-y-4 border border-border p-6 sm:mt-24 sm:p-8">
       <h1 className="font-serif text-3xl">KeshCut Studio admin</h1>
       {step === 1 ? (
         <>
-          <Input type="email" placeholder="Authorized Gmail address" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          <Input type="tel" placeholder="Authorized phone number" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+          <Input type="email" className="text-base" aria-label="Authorized Gmail address" autoComplete="email" placeholder="Authorized Gmail address" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <Input type="tel" className="text-base" aria-label="Authorized phone number" autoComplete="tel" placeholder="Authorized phone number" value={phone} onChange={(e) => setPhone(e.target.value)} required />
         </>
       ) : (
         <>
           <p className="text-sm text-muted-foreground">We sent a sign-in code to {email}. Enter it below, or open the link in that email.</p>
-          <Input inputMode="numeric" placeholder="Code from email" value={code} onChange={(e) => setCode(e.target.value)} required />
+          <Input className="text-base" aria-label="Code from email" autoComplete="one-time-code" inputMode="numeric" placeholder="Code from email" value={code} onChange={(e) => setCode(e.target.value)} required />
         </>
       )}
       {err && <p className="text-sm text-destructive">{err}</p>}
       <Button className="w-full" disabled={busy}>{step === 1 ? "Send code" : "Sign in"}</Button>
       {step === 2 && (
-        <button type="button" className="text-sm underline" onClick={() => setStep(1)}>Start again</button>
+        <Button type="button" variant="link" onClick={() => setStep(1)}>Start again</Button>
       )}
     </form>
   );
@@ -188,17 +188,17 @@ function Dashboard({ email }: { email: string }) {
 
   return (
     <div className="mx-auto max-w-6xl p-4 md:p-8">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-serif text-3xl">KeshCut Studio · Management</h1>
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <span>{email}</span>
-          <Button variant="outline" size="sm" onClick={() => supabase.auth.signOut()}>Sign out</Button>
+      <header className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:flex-wrap sm:justify-between">
+        <h1 className="min-w-0 font-serif text-2xl sm:text-3xl">KeshCut Studio · Management</h1>
+        <div className="grid min-w-0 justify-items-end gap-2 text-sm text-muted-foreground sm:flex sm:items-center sm:gap-3">
+          <span className="hidden min-w-0 max-w-64 truncate sm:block">{email}</span>
+          <Button className="shrink-0" variant="outline" size="sm" onClick={() => supabase.auth.signOut()}>Sign out</Button>
         </div>
       </header>
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
+        <TabsList className="grid h-auto w-full grid-cols-3 sm:w-fit">
           <TabsTrigger value="bookings">Bookings</TabsTrigger>
-          <TabsTrigger value="messages">Messages{unread > 0 && <Badge className="ml-2">{unread}</Badge>}</TabsTrigger>
+          <TabsTrigger className="min-w-0" value="messages" aria-label={unread > 0 ? `Messages (${unread} unread)` : "Messages"}>Messages{unread > 0 && <Badge className="ml-1 hidden sm:inline-flex">{unread}</Badge>}</TabsTrigger>
           <TabsTrigger value="customers">Customers</TabsTrigger>
         </TabsList>
         <TabsContent value="bookings"><Bookings tick={tick.bookings} onDeleted={() => {
@@ -254,8 +254,8 @@ function Bookings({ tick, onDeleted }: { tick: number; onDeleted: () => void }) 
     else load();
   };
   return (
-    <div className="mt-4 grid gap-4 md:grid-cols-[1fr_360px]">
-      <div>
+    <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="min-w-0">
         <div className="mb-3 flex flex-wrap gap-2">
           <Input className="max-w-xs" placeholder="Search name, phone or ticket ID" value={q} onChange={(e) => setQ(e.target.value)} />
           <Button variant="outline" size="sm" disabled={busy} onClick={async () => {
@@ -276,23 +276,23 @@ function Bookings({ tick, onDeleted }: { tick: number; onDeleted: () => void }) 
         <div className="divide-y divide-border border border-border">
           {rows.length === 0 && <p className="p-4 text-sm text-muted-foreground">No bookings found.</p>}
           {rows.map((b) => (
-            <button key={b.id} onClick={() => setSel(b)} className={`flex w-full flex-wrap items-center justify-between gap-2 p-3 text-left hover:bg-accent ${sel?.id === b.id ? "bg-accent" : ""}`}>
-              <div>
+            <Button variant="ghost" key={b.id} onClick={() => setSel(b)} className={`grid h-auto w-full grid-cols-[minmax(0,1fr)_auto] gap-2 whitespace-normal p-3 text-left sm:flex sm:justify-between ${sel?.id === b.id ? "bg-accent" : ""}`}>
+              <div className="min-w-0 break-words">
                 <div className="font-mono text-sm font-semibold">{b.ticket_id}</div>
                 <div className="text-sm">{b.customers?.name} · {b.customers?.phone}</div>
                 <div className="text-xs text-muted-foreground">{b.booking_services.map((s) => s.name).join(", ")}</div>
                 {b.custom_service && <div className="max-w-sm break-words text-xs text-muted-foreground">Others: {b.custom_service}</div>}
               </div>
-              <div className="text-right">
+              <div className="shrink-0 text-right">
                 <div className="text-sm">{fmt(b.starts_at)}</div>
                 <StatusBadge s={b.status} />
               </div>
-            </button>
+            </Button>
           ))}
         </div>
       </div>
       {sel && (
-        <aside className="h-fit space-y-3 border border-border p-4">
+        <aside className="min-w-0 h-fit space-y-3 break-words border border-border p-4">
           <div className="text-xs uppercase text-muted-foreground">Ticket ID</div>
           <div className="font-mono text-2xl font-semibold">{sel.ticket_id}</div>
           <StatusBadge s={sel.status} />
@@ -356,16 +356,16 @@ function Messages({ tick, open, setOpen }: { tick: number; open: string | null; 
     return !s ? convs : convs.filter((c) => c.customers?.name.toLowerCase().includes(s) || (d && c.customers?.phone.includes(d)));
   }, [q, convs]);
   return (
-    <div className="mt-4 grid gap-4 md:grid-cols-[300px_1fr]">
-      <div>
+    <div className="mt-4 grid gap-4 md:grid-cols-[260px_minmax(0,1fr)]">
+      <div className="min-w-0">
         <Input className="mb-2" placeholder="Filter by name or phone" value={q} onChange={(e) => setQ(e.target.value)} />
         <div className="divide-y divide-border border border-border">
           {shown.length === 0 && <p className="p-4 text-sm text-muted-foreground">No conversations yet.</p>}
           {shown.map((c) => (
-            <button key={c.id} onClick={() => setOpen(c.id)} className={`flex w-full items-center justify-between p-3 text-left hover:bg-accent ${open === c.id ? "bg-accent" : ""}`}>
-              <div><div className="text-sm font-medium">{c.customers?.name}</div><div className="text-xs text-muted-foreground">{c.customers?.phone} · {fmt(c.last_message_at)}</div></div>
-              {c.unread_admin > 0 && <Badge>{c.unread_admin}</Badge>}
-            </button>
+            <Button variant="ghost" key={c.id} onClick={() => setOpen(c.id)} className={`grid h-auto w-full grid-cols-[minmax(0,1fr)_auto] gap-2 whitespace-normal p-3 text-left ${open === c.id ? "bg-accent" : ""}`}>
+              <div className="min-w-0 break-words"><div className="text-sm font-medium">{c.customers?.name}</div><div className="text-xs text-muted-foreground">{c.customers?.phone} · {fmt(c.last_message_at)}</div></div>
+              {c.unread_admin > 0 && <Badge className="shrink-0">{c.unread_admin}</Badge>}
+            </Button>
           ))}
         </div>
       </div>
@@ -397,8 +397,8 @@ function Thread({ id, tick }: { id: string; tick: number }) {
     if (error) toast.error(error.message); else setText("");
   };
   return (
-    <div className="flex h-[70vh] flex-col border border-border">
-      <div ref={box} className="flex-1 space-y-2 overflow-auto p-4">
+    <div className="flex min-w-0 h-[70dvh] flex-col border border-border">
+      <div ref={box} className="min-h-0 flex-1 space-y-2 overflow-auto p-4">
         {msgs.map((m) => (
           <div key={m.id} className={`max-w-[80%] whitespace-pre-wrap break-words rounded-sm border border-border px-3 py-2 text-sm ${m.sender === "admin" ? "ml-auto bg-primary text-primary-foreground" : ""}`}>
             {m.body}
@@ -406,8 +406,8 @@ function Thread({ id, tick }: { id: string; tick: number }) {
           </div>
         ))}
       </div>
-      <form onSubmit={send} className="flex gap-2 border-t border-border p-3">
-        <Textarea rows={2} maxLength={1000} value={text} placeholder="Reply (text and emoji only)" onChange={(e) => setText(e.target.value)}
+      <form onSubmit={send} className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-end gap-2 border-t border-border p-3">
+        <Textarea className="min-w-0 text-base" aria-label="Reply" rows={2} maxLength={1000} value={text} placeholder="Reply (text and emoji only)" onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); (e.currentTarget.form as HTMLFormElement).requestSubmit(); } }}
           onPaste={(e) => { if (e.clipboardData.files.length) e.preventDefault(); }} onDrop={(e) => { if (e.dataTransfer.files.length) e.preventDefault(); }} />
         <Button>Send</Button>
@@ -447,21 +447,21 @@ function Customers({ tick, onChat }: { tick: number; onChat: (id: string) => voi
       {q.replace(/\D/g, "").length >= 3 && rows.length === 0 && <p className="text-sm text-muted-foreground">No customer with that number.</p>}
       {c && (
         <div className="grid gap-4 md:grid-cols-2">
-          <section className="space-y-2 border border-border p-4">
+          <section className="min-w-0 space-y-2 break-words border border-border p-4">
             <h2 className="font-serif text-2xl">{c.name}</h2>
             <p className="text-sm">{c.phone} · {c.visit_count} completed visit{c.visit_count === 1 ? "" : "s"} · {c.bookings.length} booking{c.bookings.length === 1 ? "" : "s"}</p>
             <p className="text-xs text-muted-foreground">Customer since {fmt(c.created_at)}</p>
             <p className="text-sm"><span className="text-muted-foreground">Services used: </span>{services.join(", ") || "None yet"}</p>
             <div className="divide-y divide-border">
               {c.bookings.map((b) => (
-                <div key={b.ticket_id} className="flex justify-between gap-2 py-2 text-sm">
-                  <div><span className="font-mono font-semibold">{b.ticket_id}</span> · {fmt(b.starts_at)}<div className="text-xs text-muted-foreground">{b.booking_services.map((s) => s.name).join(", ")}</div>{b.custom_service && <p className="break-words text-xs text-muted-foreground">Others: {b.custom_service}</p>}</div>
+                <div key={b.ticket_id} className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 py-2 text-sm">
+                  <div className="min-w-0"><span className="font-mono font-semibold">{b.ticket_id}</span> · {fmt(b.starts_at)}<div className="text-xs text-muted-foreground">{b.booking_services.map((s) => s.name).join(", ")}</div>{b.custom_service && <p className="break-words text-xs text-muted-foreground">Others: {b.custom_service}</p>}</div>
                   <StatusBadge s={b.status} />
                 </div>
               ))}
             </div>
           </section>
-          <section className="space-y-2 border border-border p-4">
+          <section className="min-w-0 space-y-2 break-words border border-border p-4">
             <h3 className="font-medium">Conversation history</h3>
             {c.conversations.length === 0 && <p className="text-sm text-muted-foreground">No messages.</p>}
             {c.conversations.map((cv) => (
