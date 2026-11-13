@@ -36,6 +36,13 @@
       "when": 1794571807638,
       "tag": "0004_support_signed_test_session_proof",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794573066732,
+      "tag": "0005_courses_do_not_block_time",
+      "breakpoints": true
     }
   ]
 }

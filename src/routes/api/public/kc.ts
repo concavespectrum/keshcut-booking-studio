@@ -56,7 +56,8 @@ async function db() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
 }
-function fail(error: { message?: string } | null) {
+function fail(error: { message?: string; code?: string } | null) {
+  if (error?.code === "23P01") return json({ error: ERR.slot_taken[1], code: "slot_taken" }, 409);
   const key = (Object.keys(ERR) as ErrKey[]).find((k) => error?.message?.includes(k));
   if (key) return json({ error: ERR[key][1], code: key }, ERR[key][0]);
   console.error("kc rpc error", error);

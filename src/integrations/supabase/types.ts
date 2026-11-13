@@ -95,6 +95,7 @@ export type Database = {
       bookings: {
         Row: {
           admin_note: string | null
+          blocks_time: boolean
           created_at: string
           custom_service: string | null
           customer_id: string
@@ -109,6 +110,7 @@ export type Database = {
         }
         Insert: {
           admin_note?: string | null
+          blocks_time?: boolean
           created_at?: string
           custom_service?: string | null
           customer_id: string
@@ -123,6 +125,7 @@ export type Database = {
         }
         Update: {
           admin_note?: string | null
+          blocks_time?: boolean
           created_at?: string
           custom_service?: string | null
           customer_id?: string
