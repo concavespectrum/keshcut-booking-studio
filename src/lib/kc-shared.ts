@@ -12,3 +12,10 @@ export function cleanMessage(s: unknown): string | null {
   const t = s.replace(/[\u0000-\u0009\u000B-\u001F\u007F]/g, "").trim();
   return t.length >= 1 && t.length <= 1000 ? t : null;
 }
+
+export function customServiceDetail(services: number[], value: unknown): { ok: true; detail: string } | { ok: false } {
+  if (!services.includes(13)) return { ok: true, detail: "" };
+  if (typeof value !== "string") return { ok: false };
+  const detail = value.trim();
+  return detail.length >= 1 && detail.length <= 500 ? { ok: true, detail } : { ok: false };
+}

@@ -43,12 +43,17 @@ export const verifyAdminSession = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const email = typeof context.claims.email === "string" ? context.claims.email : "";
-    const sessionId = context.claims.session_id;
-    if (typeof sessionId !== "string" || !z.string().uuid().safeParse(sessionId).success) throw new Error("Please sign in again.");
+    const rawSession = context.claims.session_id;
+    const issuedAt = context.claims.iat;
+    if (rawSession != null && !z.string().uuid().safeParse(rawSession).success) throw new Error("Please sign in again.");
+    if (rawSession == null && (typeof issuedAt !== "number" || !Number.isSafeInteger(issuedAt))) throw new Error("Please sign in again.");
+    // Managed preview tokens lack session_id; bind their grant to signed issuer time instead.
+    const sessionId = typeof rawSession === "string" ? rawSession : crypto.randomUUID();
     const { data: ok, error } = await supabaseAdmin.rpc("kc_admin_check", { p_email: email, p_phone: data.phone });
     if (error || !ok) throw new Error("This email and phone number are not authorized.");
     const { error: saveError } = await supabaseAdmin.from("admin_verified_sessions").upsert({
       session_id: sessionId, user_id: context.userId,
+      issued_at: rawSession == null && typeof issuedAt === "number" ? issuedAt : null,
       expires_at: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
     });
     if (saveError) throw new Error("Could not verify access. Please try again.");

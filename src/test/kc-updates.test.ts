@@ -1,6 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { bookingsCsv, csvCell } from "@/lib/admin/csv";
-import { normalizePhone } from "@/lib/kc-shared";
+import { normalizePhone, customServiceDetail } from "@/lib/kc-shared";
+
+describe("Others service rules for booking and edits", () => {
+  it("requires details even when Others is combined with other services", () => {
+    expect(customServiceDetail([1, 11, 12, 13], "  ")).toEqual({ ok: false });
+    expect(customServiceDetail([13], undefined)).toEqual({ ok: false });
+  });
+  it("preserves the customer's custom request alongside selected services", () => {
+    expect(customServiceDetail([11, 13], "  Wedding grooming ✂️  ")).toEqual({ ok: true, detail: "Wedding grooming ✂️" });
+  });
+  it("clears custom details when Others is removed", () => {
+    expect(customServiceDetail([11, 12], "Previous request")).toEqual({ ok: true, detail: "" });
+  });
+});
 
 describe("administrator contact numbers", () => {
   it("normalizes the owner's number without confusing it with the developer", () => {

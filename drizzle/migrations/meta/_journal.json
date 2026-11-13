@@ -29,6 +29,13 @@
       "when": 1794571425212,
       "tag": "0003_custom_services_verified_admin_ticket_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794571807638,
+      "tag": "0004_support_signed_test_session_proof",
+      "breakpoints": true
     }
   ]
 }

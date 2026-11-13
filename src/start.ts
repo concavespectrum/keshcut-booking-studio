@@ -7,6 +7,8 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
   try {
     return await next();
   } catch (error) {
+    // Auth middleware deliberately throws HTTP responses; preserve their status.
+    if (error instanceof Response) return error;
     if (error != null && typeof error === "object" && "statusCode" in error) {
       throw error;
     }

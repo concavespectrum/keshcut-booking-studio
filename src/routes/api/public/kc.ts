@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { cleanMessage, normalizePhone } from "@/lib/kc-shared";
+import { cleanMessage, normalizePhone, customServiceDetail } from "@/lib/kc-shared";
 import { z } from "zod";
 
 // Customer API for the static site. Identity = HttpOnly session cookie (random token,
@@ -114,12 +114,14 @@ export const Route = createFileRoute("/api/public/kc")({
           return json({ error: ERR.invalid_phone[1] }, 400);
 
         if (body.action === "book") {
+          const custom = customServiceDetail(body.services, body.custom);
+          if (!custom.ok) return json({ error: ERR.invalid_custom_service[1] }, 400);
           const start = new Date(String(body.start));
           if (isNaN(start.getTime())) return json({ error: ERR.invalid_time[1] }, 400);
           const { data, error } = await sb.rpc("kc_create_booking_details", {
             p_hash: h as string, p_new_hash: freshHash, p_name: name, p_phone: phoneRaw,
             p_services: ids(body.services), p_start: start.toISOString(),
-             p_custom: body.custom ?? "",
+             p_custom: custom.detail,
           });
           if (error) return fail(error);
           const d = data as { ticket_id: string; session_created: boolean };
@@ -128,9 +130,11 @@ export const Route = createFileRoute("/api/public/kc")({
         if (body.action === "update" || body.action === "cancel") {
           if (!h) return json({ error: ERR.no_session[1] }, 401);
           const ticket = String(body.ticket || "").slice(0, 12);
+          const custom = body.action === "update" ? customServiceDetail(body.services, body.custom) : { ok: true as const, detail: "" };
+          if (!custom.ok) return json({ error: ERR.invalid_custom_service[1] }, 400);
           const { error } =
             body.action === "update"
-              ? await sb.rpc("kc_update_service_details", { p_hash: h, p_ticket: ticket, p_services: ids(body.services), p_custom: body.custom ?? "" })
+              ? await sb.rpc("kc_update_service_details", { p_hash: h, p_ticket: ticket, p_services: ids(body.services), p_custom: custom.detail })
               : await sb.rpc("kc_cancel", { p_hash: h, p_ticket: ticket });
           return error ? fail(error) : json({ ok: true });
         }

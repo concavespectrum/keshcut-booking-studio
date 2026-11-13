@@ -35,16 +35,19 @@ export type Database = {
       admin_verified_sessions: {
         Row: {
           expires_at: string
+          issued_at: number | null
           session_id: string
           user_id: string
         }
         Insert: {
           expires_at: string
+          issued_at?: number | null
           session_id: string
           user_id: string
         }
         Update: {
           expires_at?: string
+          issued_at?: number | null
           session_id?: string
           user_id?: string
         }
