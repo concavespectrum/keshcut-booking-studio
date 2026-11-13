@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { cleanMessage, normalizePhone } from "@/lib/kc-shared";
+import { z } from "zod";
 
 // Customer API for the static site. Identity = HttpOnly session cookie (random token,
 // only its SHA-256 is stored). All rules (ownership, availability, prices) live in SQL RPCs.
@@ -8,6 +9,7 @@ const ERR = {
   invalid_phone: [400, "Please enter a valid Nepali mobile number."],
   invalid_name: [400, "Please enter your name."],
   invalid_services: [400, "Please choose at least one service."],
+  invalid_custom_service: [400, "Please describe the service you need (1–500 characters)."],
   invalid_time: [400, "Please choose an available time."],
   outside_hours: [400, "That booking would run past closing time. Pick an earlier time or fewer services."],
   slot_taken: [409, "Sorry, that time was just taken. Please choose another time."],
@@ -20,7 +22,13 @@ const ERR = {
   rate_limited: [429, "You're sending messages too fast. Please wait a moment."],
 } satisfies Record<string, [number, string]>;
 type ErrKey = keyof typeof ERR;
-type Body = { action?: string; start?: unknown; services?: unknown; ticket?: unknown; body?: unknown; name?: unknown; phone?: unknown };
+const bodySchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("book"), start: z.string().datetime({ offset: true }), services: z.array(z.number().int().min(1).max(13)).min(1).max(6), custom: z.string().max(500).optional(), name: z.string().trim().min(1).max(80), phone: z.string().min(9).max(20) }).strict(),
+  z.object({ action: z.literal("update"), ticket: z.string().regex(/^KC-[A-Z2-9]{6}$/), services: z.array(z.number().int().min(1).max(13)).min(1).max(6), custom: z.string().max(500).optional() }).strict(),
+  z.object({ action: z.literal("cancel"), ticket: z.string().regex(/^KC-[A-Z2-9]{6}$/) }).strict(),
+  z.object({ action: z.literal("message"), body: z.string().min(1).max(1000), name: z.string().max(80).optional(), phone: z.string().max(20).optional() }).strict(),
+]);
+type Body = z.infer<typeof bodySchema>;
 
 const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), {
@@ -42,7 +50,7 @@ function readCookie(req: Request) {
 }
 function sameOrigin(req: Request) {
   const o = req.headers.get("origin");
-  return !o || o === new URL(req.url).origin;
+  return o === new URL(req.url).origin && req.headers.get("sec-fetch-site") !== "cross-site";
 }
 async function db() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -73,7 +81,8 @@ export const Route = createFileRoute("/api/public/kc")({
         if (!tok) return json({ me: null });
         const h = await sha256Hex(tok);
         if (url.searchParams.has("messages")) {
-          const after = Number(url.searchParams.get("after") || 0) || 0;
+          const after = Number(url.searchParams.get("after") || 0);
+          if (!Number.isSafeInteger(after) || after < 0) return json({ error: "Invalid message cursor" }, 400);
           const { data, error } = await sb.rpc("kc_messages", { p_hash: h, p_after: after });
           return error ? fail(error) : json({ messages: data });
         }
@@ -84,7 +93,10 @@ export const Route = createFileRoute("/api/public/kc")({
         if (!sameOrigin(request)) return json({ error: "Forbidden" }, 403);
         let body: Body;
         try {
-          body = (await request.json()) as Body;
+          if (Number(request.headers.get("content-length") || 0) > 8192) return json({ error: "Request too large" }, 413);
+          const text = await request.text();
+          if (text.length > 8192) return json({ error: "Request too large" }, 413);
+          body = bodySchema.parse(JSON.parse(text));
         } catch {
           return json({ error: "Bad request" }, 400);
         }
@@ -96,17 +108,18 @@ export const Route = createFileRoute("/api/public/kc")({
         const setCookie = {
           "set-cookie": `${COOKIE}=${fresh}; Path=/; Max-Age=31536000; HttpOnly; Secure; SameSite=Lax`,
         };
-        const name = typeof body.name === "string" ? body.name.trim().slice(0, 80) : "";
-        const phoneRaw = typeof body.phone === "string" ? body.phone : "";
+        const name = "name" in body && typeof body.name === "string" ? body.name.trim() : "";
+        const phoneRaw = "phone" in body && typeof body.phone === "string" ? body.phone : "";
         if (!h && body.action !== "cancel" && body.action !== "update" && !normalizePhone(phoneRaw))
           return json({ error: ERR.invalid_phone[1] }, 400);
 
         if (body.action === "book") {
           const start = new Date(String(body.start));
           if (isNaN(start.getTime())) return json({ error: ERR.invalid_time[1] }, 400);
-          const { data, error } = await sb.rpc("kc_create_booking", {
+          const { data, error } = await sb.rpc("kc_create_booking_details", {
             p_hash: h as string, p_new_hash: freshHash, p_name: name, p_phone: phoneRaw,
             p_services: ids(body.services), p_start: start.toISOString(),
+             p_custom: body.custom ?? "",
           });
           if (error) return fail(error);
           const d = data as { ticket_id: string; session_created: boolean };
@@ -117,7 +130,7 @@ export const Route = createFileRoute("/api/public/kc")({
           const ticket = String(body.ticket || "").slice(0, 12);
           const { error } =
             body.action === "update"
-              ? await sb.rpc("kc_update_services", { p_hash: h, p_ticket: ticket, p_services: ids(body.services) })
+              ? await sb.rpc("kc_update_service_details", { p_hash: h, p_ticket: ticket, p_services: ids(body.services), p_custom: body.custom ?? "" })
               : await sb.rpc("kc_cancel", { p_hash: h, p_ticket: ticket });
           return error ? fail(error) : json({ ok: true });
         }

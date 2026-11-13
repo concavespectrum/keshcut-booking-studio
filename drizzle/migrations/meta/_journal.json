@@ -22,6 +22,13 @@
       "when": 1794563831084,
       "tag": "0002_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794571425212,
+      "tag": "0003_custom_services_verified_admin_ticket_delete",
+      "breakpoints": true
     }
   ]
 }

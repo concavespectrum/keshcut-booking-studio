@@ -3,7 +3,7 @@
                     Later paste the ID here (looks like G-XXXXXXXXXX) or set GA_MEASUREMENT_ID in your host's build settings.
    paperFoldShadow: false removes the soft shading under the folding paper in the scissors transition. */
 window.SITE_CONFIG = {
-  whatsappNumber: '9779769232638',
+  whatsappNumber: '9779821433558',
   gaMeasurementId: '',
   paperFoldShadow: true
 };

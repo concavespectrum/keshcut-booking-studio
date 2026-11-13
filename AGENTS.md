@@ -35,4 +35,6 @@ use the editor.
 - All customer reads/writes go through `/api/public/kc` → `kc_*` SECURITY DEFINER SQL functions (service_role only) — one round trip per action, rules enforced in the database.
 - Booking overlap is prevented by the `bookings_no_overlap` exclusion constraint; prices and durations come only from `public.services`.
 - Customer live updates use data-free `realtime.send` pings on a random per-session topic, then refetch; admins use RLS-filtered postgres_changes.
-- Admin access = `admin_allowlist` (email + phone, checked server-side before OTP) and `is_admin()` in RLS.
+- Admin access requires an allowlisted email and phone both before OTP and for each authenticated session; `is_admin()` checks a server-created, expiring session grant in RLS so email-only links cannot bypass phone verification.
+- Custom-service booking wrappers validate and store details atomically with the existing customer RPCs; reuse server-owned service durations and ownership checks.
+- Ticket exports use authenticated server functions with RLS and CSV formula escaping; permanent deletion uses an admin-checking SQL function to cascade only ticket services and update visit counts.

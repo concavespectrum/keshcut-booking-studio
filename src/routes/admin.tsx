@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { requestAdminOtp } from "@/lib/admin/admin.functions";
+import { requestAdminOtp, verifyAdminSession, exportBookingTickets, deleteBookingTicket } from "@/lib/admin/admin.functions";
+import { Download, Trash2 } from "lucide-react";
 import { normalizePhone } from "@/lib/kc-shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,16 +59,31 @@ function AdminPage() {
       ) : isAdmin === null ? (
         <p className="p-8 text-muted-foreground">Checking access…</p>
       ) : !isAdmin ? (
-        <div className="mx-auto max-w-md p-8 text-center">
-          <h1 className="text-2xl font-semibold">Not authorized</h1>
-          <p className="mt-2 text-muted-foreground">This account does not have admin access.</p>
-          <Button className="mt-6" onClick={() => supabase.auth.signOut()}>Sign out</Button>
-        </div>
+        <VerifyAccess onVerified={() => setIsAdmin(true)} />
       ) : (
         <Dashboard email={session.user.email ?? ""} />
       )}
     </div>
   );
+}
+
+function VerifyAccess({ onVerified }: { onVerified: () => void }) {
+  const verify = useServerFn(verifyAdminSession);
+  const [phone, setPhone] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  return <form className="mx-auto mt-24 max-w-sm space-y-4 border border-border p-8" onSubmit={async e => {
+    e.preventDefault(); setBusy(true); setError("");
+    try { await verify({ data: { phone } }); onVerified(); }
+    catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  }}>
+    <h1 className="font-serif text-3xl">Verify admin access</h1>
+    <Input type="tel" aria-label="Authorized phone number" placeholder="Authorized phone number" value={phone} onChange={e => setPhone(e.target.value)} required />
+    {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+    <Button disabled={busy}>Verify</Button>
+    <Button type="button" variant="outline" onClick={() => supabase.auth.signOut()}>Sign out</Button>
+  </form>;
 }
 
 function Login() {
@@ -121,11 +137,11 @@ function Login() {
 
 type BookingRow = {
   id: string; ticket_id: string; starts_at: string; ends_at: string; status: string; total_price_npr: number | null;
-  admin_note: string | null; created_at: string; updated_at: string;
+  admin_note: string | null; custom_service: string | null; created_at: string; updated_at: string;
   customers: { id: string; name: string; phone: string; visit_count: number } | null;
   booking_services: { name: string }[];
 };
-const BOOKING_COLS = "id,ticket_id,starts_at,ends_at,status,total_price_npr,admin_note,created_at,updated_at,customers!inner(id,name,phone,visit_count),booking_services(name)";
+const BOOKING_COLS = "id,ticket_id,starts_at,ends_at,status,total_price_npr,admin_note,custom_service,created_at,updated_at,customers!inner(id,name,phone,visit_count),booking_services(name)";
 
 // One realtime channel for the whole dashboard; listeners debounce refetches.
 function useLive(onChange: (table: string, row: Record<string, unknown>) => void) {
@@ -185,7 +201,9 @@ function Dashboard({ email }: { email: string }) {
           <TabsTrigger value="messages">Messages{unread > 0 && <Badge className="ml-2">{unread}</Badge>}</TabsTrigger>
           <TabsTrigger value="customers">Customers</TabsTrigger>
         </TabsList>
-        <TabsContent value="bookings"><Bookings tick={tick.bookings} /></TabsContent>
+        <TabsContent value="bookings"><Bookings tick={tick.bookings} onDeleted={() => {
+          bump.current.bookings++; bump.current.cust++; setTick({ ...bump.current });
+        }} /></TabsContent>
         <TabsContent value="messages"><Messages tick={tick.conv} open={openConv} setOpen={setOpenConv} /></TabsContent>
         <TabsContent value="customers">
           <Customers tick={tick.cust} onChat={(id) => { setOpenConv(id); setTab("messages"); }} />
@@ -199,7 +217,10 @@ function StatusBadge({ s }: { s: string }) {
   return <Badge variant={s === "confirmed" ? "default" : s === "pending" ? "secondary" : "outline"}>{LABEL[s] ?? s}</Badge>;
 }
 
-function Bookings({ tick }: { tick: number }) {
+function Bookings({ tick, onDeleted }: { tick: number; onDeleted: () => void }) {
+  const exportTickets = useServerFn(exportBookingTickets);
+  const deleteTicket = useServerFn(deleteBookingTicket);
+  const [busy, setBusy] = useState(false);
   const [q, setQ] = useState("");
   const [view, setView] = useState<"upcoming" | "pending" | "past">("upcoming");
   const [rows, setRows] = useState<BookingRow[]>([]);
@@ -221,7 +242,7 @@ function Bookings({ tick }: { tick: number }) {
     if (error) toast.error(error.message);
     const list = (data ?? []) as unknown as BookingRow[];
     setRows(list);
-    setSel((cur) => (cur ? list.find((r) => r.id === cur.id) ?? cur : null));
+    setSel((cur) => (cur ? list.find((r) => r.id === cur.id) ?? null : null));
   }, [q, view]);
   const deb = useDebounced(load, 300);
   useEffect(() => deb(), [q, deb]);
@@ -237,6 +258,15 @@ function Bookings({ tick }: { tick: number }) {
       <div>
         <div className="mb-3 flex flex-wrap gap-2">
           <Input className="max-w-xs" placeholder="Search name, phone or ticket ID" value={q} onChange={(e) => setQ(e.target.value)} />
+          <Button variant="outline" size="sm" disabled={busy} onClick={async () => {
+            setBusy(true);
+            try {
+              const { csv } = await exportTickets();
+              const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+              const a = document.createElement("a"); a.href = url; a.download = "keshcut-booking-tickets.csv"; a.click();
+              setTimeout(() => URL.revokeObjectURL(url), 1000);
+            } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
+          }}><Download />Export all tickets</Button>
           {(["upcoming", "pending", "past"] as const).map((v) => (
             <Button key={v} size="sm" variant={view === v && !q ? "default" : "outline"} onClick={() => { setQ(""); setView(v); }}>
               {v === "upcoming" ? "Upcoming" : v === "pending" ? "Needs confirming" : "Past"}
@@ -251,6 +281,7 @@ function Bookings({ tick }: { tick: number }) {
                 <div className="font-mono text-sm font-semibold">{b.ticket_id}</div>
                 <div className="text-sm">{b.customers?.name} · {b.customers?.phone}</div>
                 <div className="text-xs text-muted-foreground">{b.booking_services.map((s) => s.name).join(", ")}</div>
+                {b.custom_service && <div className="max-w-sm break-words text-xs text-muted-foreground">Others: {b.custom_service}</div>}
               </div>
               <div className="text-right">
                 <div className="text-sm">{fmt(b.starts_at)}</div>
@@ -271,6 +302,7 @@ function Bookings({ tick }: { tick: number }) {
             <div><dt className="inline text-muted-foreground">Visits: </dt><dd className="inline">{sel.customers?.visit_count}</dd></div>
             <div><dt className="inline text-muted-foreground">Time: </dt><dd className="inline">{fmt(sel.starts_at)} – {new Date(sel.ends_at).toLocaleTimeString("en-GB", { timeZone: "Asia/Kathmandu", hour: "numeric", minute: "2-digit" })}</dd></div>
             <div><dt className="inline text-muted-foreground">Services: </dt><dd className="inline">{sel.booking_services.map((s) => s.name).join(", ")}</dd></div>
+            {sel.custom_service && <div className="break-words"><dt className="inline text-muted-foreground">Others: </dt><dd className="inline">{sel.custom_service}</dd></div>}
             <div><dt className="inline text-muted-foreground">Price: </dt><dd className="inline">{sel.total_price_npr != null ? `Rs ${sel.total_price_npr}` : "Set at studio"}</dd></div>
             <div><dt className="inline text-muted-foreground">Booked: </dt><dd className="inline">{fmt(sel.created_at)}</dd></div>
             <div><dt className="inline text-muted-foreground">Last change: </dt><dd className="inline">{fmt(sel.updated_at)}</dd></div>
@@ -281,6 +313,14 @@ function Bookings({ tick }: { tick: number }) {
             ))}
           </div>
           <NoteEditor b={sel} onSaved={load} />
+          <Button variant="destructive" size="sm" disabled={busy} onClick={async () => {
+            if (!window.confirm(`Permanently delete ticket ${sel.ticket_id}? This cannot be undone.`)) return;
+            setBusy(true);
+            try {
+              await deleteTicket({ data: { id: sel.id } });
+              setRows(r => r.filter(b => b.id !== sel.id)); setSel(null); onDeleted(); await load(); toast("Ticket deleted");
+            } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
+          }}><Trash2 />Delete ticket</Button>
         </aside>
       )}
     </div>
@@ -378,7 +418,7 @@ function Thread({ id, tick }: { id: string; tick: number }) {
 
 type Cust = {
   id: string; name: string; phone: string; visit_count: number; created_at: string;
-  bookings: { ticket_id: string; starts_at: string; status: string; total_price_npr: number | null; booking_services: { name: string }[] }[];
+  bookings: { ticket_id: string; starts_at: string; status: string; custom_service: string | null; total_price_npr: number | null; booking_services: { name: string }[] }[];
   conversations: { id: string; messages: { id: number; sender: string; body: string; created_at: string }[] }[];
 };
 function Customers({ tick, onChat }: { tick: number; onChat: (id: string) => void }) {
@@ -390,7 +430,7 @@ function Customers({ tick, onChat }: { tick: number; onChat: (id: string) => voi
     if (d.length < 3) { setRows([]); return; }
     const p = normalizePhone(q) ?? d.replace(/^977/, "");
     const { data } = await supabase.from("customers")
-      .select("id,name,phone,visit_count,created_at,bookings(ticket_id,starts_at,status,total_price_npr,booking_services(name)),conversations(id,messages(id,sender,body,created_at))")
+      .select("id,name,phone,visit_count,created_at,bookings(ticket_id,starts_at,status,custom_service,total_price_npr,booking_services(name)),conversations(id,messages(id,sender,body,created_at))")
       .ilike("phone", `%${p}%`).order("starts_at", { referencedTable: "bookings", ascending: false }).limit(20);
     setRows((data ?? []) as unknown as Cust[]);
   }, [q]);
@@ -415,7 +455,7 @@ function Customers({ tick, onChat }: { tick: number; onChat: (id: string) => voi
             <div className="divide-y divide-border">
               {c.bookings.map((b) => (
                 <div key={b.ticket_id} className="flex justify-between gap-2 py-2 text-sm">
-                  <div><span className="font-mono font-semibold">{b.ticket_id}</span> · {fmt(b.starts_at)}<div className="text-xs text-muted-foreground">{b.booking_services.map((s) => s.name).join(", ")}</div></div>
+                  <div><span className="font-mono font-semibold">{b.ticket_id}</span> · {fmt(b.starts_at)}<div className="text-xs text-muted-foreground">{b.booking_services.map((s) => s.name).join(", ")}</div>{b.custom_service && <p className="break-words text-xs text-muted-foreground">Others: {b.custom_service}</p>}</div>
                   <StatusBadge s={b.status} />
                 </div>
               ))}

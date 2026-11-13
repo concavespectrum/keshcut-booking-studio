@@ -1,20 +1,16 @@
-const $=s=>document.querySelector(s),RM=matchMedia('(prefers-reduced-motion:reduce)').matches,CFG=window.SITE_CONFIG||{},WA=CFG.whatsappNumber||'9779769232638',track=(n,p)=>{window.track&&window.track(n,p)};
-const wa=m=>`https://wa.me/${WA}?text=${encodeURIComponent(m)}`;
+const $=s=>document.querySelector(s),RM=matchMedia('(prefers-reduced-motion:reduce)').matches,track=(n,p)=>{window.track&&window.track(n,p)};
 const CARDS=["/images/gallery/haircut-keshcut-cape.jpg","/images/gallery/keshcut-studio-graphic.jpg","/images/gallery/outdoor-haircut-training.jpg","/images/gallery/instructor-fade-demo.jpg","/images/gallery/back-view-fade-haircut.jpg","/images/gallery/kids-fade-haircut.jpg","/images/gallery/razor-practice-class.jpg"]; // one image per card; reorder or swap here
 const SV=['Haircut & Modern Hairstyles','Beard Trimming & Styling','Hair Coloring & Highlights','Hair Perming','Dreadlocks (Locs) Styling','Hair Washing & Cleansing','Facial Treatments','Hair & Scalp Care','Hair Styling & Blow Dry','Professional Grooming','Barber Training & Academy Courses'];
-$('#ac').href=wa('Hello KeshCut Studio, I would like to ask about the barber academy courses.');
-const bk=(what,i)=>`Hello KeshCut Studio, I would like to book ${what}.\nService: ${SV[i]}\nDate: \nTime: \nName: `;
-const MSG=[bk('a haircut or modern hairstyle',0),bk('beard trimming and styling',1),bk('hair coloring or highlights',2),bk('a hair perm',3),bk('dreadlocks (locs) styling',4),bk('a hair wash and cleansing',5),bk('a facial treatment',6),bk('a hair and scalp care treatment',7),bk('hair styling and blow dry',8),bk('a professional grooming session',9),
- 'Hello KeshCut Studio, I would like to ask about barber training and academy courses.','Hello KeshCut Studio, I would like to ask if a service is available.\nService I need: '];
-document.querySelectorAll('[data-m]').forEach(a=>{if(+a.dataset.m>=10)a.href=wa(MSG[a.dataset.m])});
+$('#ac').href='#book';
+document.querySelectorAll('[data-m]').forEach(a=>{a.href='#book';a.removeAttribute('target')});
 
 /* analytics events: clicks only, never names, phone numbers, messages or booking details (track() does nothing unless the visitor agreed) */
 document.addEventListener('click',e=>{
  const a=e.target.closest('[data-m]');
  if(a){const i=+a.dataset.m;if(i<10){track('view_service',{service_name:SV[i]});track('booking_click',{link_location:'service_row'})}
-  else if(i===10){track('view_service',{service_name:SV[10]});track('whatsapp_question_click',{link_location:'service_row'})}
-  else track('whatsapp_question_click',{link_location:'others_row'})}
- if(e.target.closest('#ac'))track('whatsapp_question_click',{link_location:'academy'});
+  else if(i===10){track('view_service',{service_name:SV[10]});track('booking_click',{link_location:'service_row'})}
+  else track('booking_click',{link_location:'others_row'})}
+ if(e.target.closest('#ac'))track('booking_click',{link_location:'academy'});
  if(e.target.closest('#wa3,#again'))track('whatsapp_booking_click',{link_location:'booking_fallback'});
  const p=e.target.closest('[data-product]');if(p)track('view_product',{product_name:p.dataset.product})});
 

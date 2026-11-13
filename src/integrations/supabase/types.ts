@@ -32,6 +32,24 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_verified_sessions: {
+        Row: {
+          expires_at: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          expires_at: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          expires_at?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       booking_services: {
         Row: {
           booking_id: string
@@ -75,6 +93,7 @@ export type Database = {
         Row: {
           admin_note: string | null
           created_at: string
+          custom_service: string | null
           customer_id: string
           ends_at: string
           id: string
@@ -88,6 +107,7 @@ export type Database = {
         Insert: {
           admin_note?: string | null
           created_at?: string
+          custom_service?: string | null
           customer_id: string
           ends_at: string
           id?: string
@@ -101,6 +121,7 @@ export type Database = {
         Update: {
           admin_note?: string | null
           created_at?: string
+          custom_service?: string | null
           customer_id?: string
           ends_at?: string
           id?: string
@@ -307,6 +328,7 @@ export type Database = {
         Args: { p_email: string; p_phone: string }
         Returns: boolean
       }
+      kc_admin_delete_ticket: { Args: { p_id: string }; Returns: Json }
       kc_busy: { Args: { p_day: string }; Returns: Json }
       kc_cancel: { Args: { p_hash: string; p_ticket: string }; Returns: Json }
       kc_check_time: {
@@ -323,6 +345,22 @@ export type Database = {
           p_start: string
         }
         Returns: Json
+      }
+      kc_create_booking_details: {
+        Args: {
+          p_custom: string
+          p_hash: string
+          p_name: string
+          p_new_hash: string
+          p_phone: string
+          p_services: number[]
+          p_start: string
+        }
+        Returns: Json
+      }
+      kc_custom_detail: {
+        Args: { p_custom: string; p_services: number[] }
+        Returns: string
       }
       kc_ensure_session: {
         Args: {
@@ -388,6 +426,15 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      kc_update_service_details: {
+        Args: {
+          p_custom: string
+          p_hash: string
+          p_services: number[]
+          p_ticket: string
+        }
+        Returns: Json
       }
       kc_update_services: {
         Args: { p_hash: string; p_services: number[]; p_ticket: string }

@@ -4,6 +4,14 @@ import siteHtml from "../site/index.html?raw";
 // The homepage is the original hand-built static site, served unchanged except for
 // the domain placeholder and the public realtime config used by the chat widget.
 export const Route = createFileRoute("/")({
+  head: () => ({ meta: [
+    { title: "KeshCut Studio | Barber & Academy in Bharatpur" },
+    { name: "description", content: "Haircuts, grooming and barber training at KeshCut Studio in Bharatpur. Book your appointment online." },
+    { property: "og:title", content: "KeshCut Studio | Barber & Academy in Bharatpur" },
+    { property: "og:description", content: "Book haircuts, grooming and barber training at KeshCut Studio." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary_large_image" },
+  ] }),
   server: {
     handlers: {
       GET: ({ request }) => {

@@ -187,3 +187,5 @@ dialog.vid{width:fit-content;max-width:calc(100vw - 16px)}
 .kc-msgs,.kc-chatf,.kc-chatid,.kc-chat .kc-err{margin:0 16px}.kc-chatf{margin-bottom:16px}
 [data-dev=desktop] .kc-col{grid-area:t;max-width:520px;width:100%}
 .ticket input[type=checkbox]{color-scheme:light}
+.ticket textarea{display:block;width:100%;padding:10px;border:1px solid currentColor;background:transparent;color:inherit;border-radius:2px;font:inherit;resize:vertical}
+.kc-custom-text{white-space:pre-wrap;overflow-wrap:anywhere}
