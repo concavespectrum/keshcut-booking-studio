@@ -43,6 +43,13 @@
       "when": 1794573066732,
       "tag": "0005_courses_do_not_block_time",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794623475005,
+      "tag": "0006_ticket_delete_cascades_chat",
+      "breakpoints": true
     }
   ]
 }
