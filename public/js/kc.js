@@ -57,7 +57,8 @@ F.onsubmit=async e=>{e.preventDefault();const err=$('#err');show(err);
 /* ---- your bookings ---- */
 const fmt=s=>new Date(s).toLocaleString('en-GB',{timeZone:'Asia/Kathmandu',weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
 function renderMe(){
- const box=$('#mine'),list=$('#mylist');if(!me){box.hidden=true;return}
+ const box=$('#mine'),list=$('#mylist');if(!me||!me.bookings.length){box.hidden=true;if(!me||!me.bookings.some(b=>b.ticket_id===$('#tid').textContent))$('#ok').hidden=true;if(!me){M.innerHTML='';last=0}return}
+ if(!me.bookings.some(b=>b.ticket_id===$('#tid').textContent))$('#ok').hidden=true;
  box.hidden=false;$('#hello').textContent='Welcome back, '+me.name;
  if(!$('#nm').value)$('#nm').value=me.name;if(!$('#ph').value)$('#ph').value=me.phone;
  list.innerHTML='';if(!me.bookings.length)list.append(el('p',{class:'note',text:'No bookings yet.'}));
@@ -93,7 +94,7 @@ function connect(){
 /* ---- chat ---- */
 const D=$('#chat'),M=$('#msgs');let last=0,ccap=0;
 function addMsg(m){if(m.id<=last)return;last=m.id;M.append(el('div',{class:'kc-m kc-'+m.sender},el('p',{text:m.body}),el('small',{text:(m.sender==='admin'?'KeshCut Studio · ':'You · ')+fmt(m.at)})));M.scrollTop=M.scrollHeight}
-async function pull(){if(!me)return;try{(await api('GET','?messages=1&after='+last)).messages.forEach(addMsg)}catch(e){}}
+async function pull(){if(!me)return;try{const ms=(await api('GET','?messages=1&after=0')).messages;if(!ms.length||ms[ms.length-1].id<last){M.innerHTML='';last=0}ms.forEach(addMsg)}catch(e){}}
 $('#chatbtn').onclick=()=>{$('#chatbtn').classList.remove('kc-new');const need=!me;$('#chatid').hidden=!need;if(need){ccap=cap($('#ccapq'));$('#cnm').value=$('#nm').value;$('#cph').value=$('#ph').value}
  if(!M.childElementCount&&!me)M.append(el('p',{class:'kc-mut',text:'Ask anything about services, times or the academy. The studio replies here.'}));D.showModal();pull()};
 D.querySelector('.lg-x').onclick=()=>D.close();D.addEventListener('click',e=>{if(e.target===D)D.close()});
