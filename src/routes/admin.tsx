@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
+import { MediaManager, Reschedule, Services } from "@/components/admin/AdminCatalog";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -193,10 +194,12 @@ function Dashboard({ email }: { email: string }) {
         </div>
       </header>
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="grid h-auto w-full grid-cols-3 sm:w-fit">
+        <TabsList className="grid h-auto w-full grid-cols-3 sm:w-fit sm:grid-cols-5">
           <TabsTrigger value="bookings">Bookings</TabsTrigger>
           <TabsTrigger className="min-w-0" value="messages" aria-label={unread > 0 ? `Messages (${unread} unread)` : "Messages"}>Messages{unread > 0 && <Badge className="ml-1 hidden sm:inline-flex">{unread}</Badge>}</TabsTrigger>
           <TabsTrigger value="customers">Customers</TabsTrigger>
+          <TabsTrigger value="services">Services</TabsTrigger>
+          <TabsTrigger value="media">Media</TabsTrigger>
         </TabsList>
         <TabsContent value="bookings"><Bookings tick={tick.bookings} onDeleted={() => {
           bump.current.bookings++; bump.current.cust++; setTick({ ...bump.current });
@@ -205,6 +208,8 @@ function Dashboard({ email }: { email: string }) {
         <TabsContent value="customers">
           <Customers tick={tick.cust} onChat={(id) => { setOpenConv(id); setTab("messages"); }} />
         </TabsContent>
+        <TabsContent value="services"><Services /></TabsContent>
+        <TabsContent value="media"><MediaManager /></TabsContent>
       </Tabs>
     </div>
   );
@@ -309,6 +314,7 @@ function Bookings({ tick, onDeleted }: { tick: number; onDeleted: () => void }) 
               <Button key={s} size="sm" variant={s === "confirmed" ? "default" : "outline"} onClick={() => setStatus(sel, s)}>{LABEL[s]}</Button>
             ))}
           </div>
+          <Reschedule id={sel.id} startsAt={sel.starts_at} status={sel.status} onDone={load} />
           <NoteEditor b={sel} onSaved={load} />
           <Button variant="destructive" size="sm" disabled={busy} onClick={async () => {
             if (!window.confirm(`Permanently delete ticket ${sel.ticket_id}? This cannot be undone.`)) return;

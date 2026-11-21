@@ -2,8 +2,8 @@
    this file only renders. The quick math check is a simple client-side CAPTCHA by design. */
 (function(){
 const $=s=>document.querySelector(s),API='/api/public/kc',RT=window.KC_RT||{};
-const SV=[[1,'Haircut & Modern Hairstyles',30],[2,'Beard Trimming & Styling',20],[3,'Hair Coloring & Highlights',90],[4,'Hair Perming',120],[5,'Dreadlocks (Locs) Styling',180],[6,'Hair Washing & Cleansing',15],[7,'Facial Treatments',45],[8,'Hair & Scalp Care',30],[9,'Hair Styling & Blow Dry',30],[10,'Professional Grooming',60],[11,'Barber Training',30],[12,'Academy Courses',30],[13,'Others',30]];
-const DUR=Object.fromEntries(SV.map(s=>[s[0],s[2]])),OPEN=600,CLOSE=1140,STEP=30;
+let SV=[[1,'Haircut & Modern Hairstyles',30],[2,'Beard Trimming & Styling',20],[3,'Hair Coloring & Highlights',90],[4,'Hair Perming',120],[5,'Dreadlocks (Locs) Styling',180],[6,'Hair Washing & Cleansing',15],[7,'Facial Treatments',45],[8,'Hair & Scalp Care',30],[9,'Hair Styling & Blow Dry',30],[10,'Professional Grooming',60],[11,'Barber Training & Academy Courses',30],[13,'Others',30]];
+let DUR=Object.fromEntries(SV.map(s=>[s[0],s[2]]));const PRICE={},OPEN=540,CLOSE=1140,STEP=5;
 const ST={pending:'Pending',confirmed:'Confirmed',completed:'Completed',cancelled:'Cancelled',no_show:'Missed'};
 const el=(t,a={},...k)=>{const e=document.createElement(t);for(const x in a){if(x==='text')e.textContent=a[x];else if(x.startsWith('on'))e[x]=a[x];else e.setAttribute(x,a[x])}k.forEach(c=>c&&e.append(c));return e};
 const api=async(m,q,b)=>{const r=await fetch(API+(q||''),{method:m,headers:b?{'content-type':'application/json'}:{},body:b?JSON.stringify(b):undefined,credentials:'same-origin'});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'Something went wrong. Please try again.');return j};
@@ -12,10 +12,24 @@ function cap(lbl){const a=1+Math.floor(Math.random()*9),b=1+Math.floor(Math.rand
 let me=null;
 
 /* ---- service checkboxes ---- */
-function svcList(box,name,checked){SV.forEach(([id,n])=>{const i=el('input',{type:'checkbox',name,value:id});if(checked&&checked.includes(id))i.checked=true;box.append(el('label',{class:'kc-chk'},i,document.createTextNode(' '+n)))})}
+function svcList(box,name,checked){SV.forEach(([id,n])=>{const i=el('input',{type:'checkbox',name,value:id});if(checked&&checked.includes(id))i.checked=true;box.append(el('label',{class:'kc-chk'},i,document.createTextNode(' '+n+(PRICE[id]!=null?' · Rs '+PRICE[id]:''))))})}
 const F=$('#tk'),svcs=$('#svcs');svcList(svcs,'svc');
+/* live service list, prices and studio media (admins edit these) */
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const murl=p=>p.startsWith('/')?p:API+'?file='+encodeURIComponent(p);
+fetch(API+'?site=1').then(r=>r.ok?r.json():null).then(d=>{if(!d)return;
+ if(d.services&&d.services.length){const keep=picked(svcs);SV=d.services.map(x=>[x.id,x.name,x.duration_min]);DUR=Object.fromEntries(SV.map(x=>[x[0],x[2]]));
+  d.services.forEach(x=>{PRICE[x.id]=x.price_npr});svcs.innerHTML='';svcList(svcs,'svc',keep);syncOther();
+  const ul=$('#svc'),ids=new Set(SV.map(x=>x[0]));
+  ul.querySelectorAll('[data-m]').forEach(a=>{const id=+a.dataset.m+1,sv=SV.find(x=>x[0]===id);if(!sv){a.parentElement.hidden=true;return}a.querySelector('.nm').textContent=sv[1]+(PRICE[id]!=null?' · Rs '+PRICE[id]:'')});
+  SV.filter(x=>x[0]>13&&!ul.querySelector(`[data-m="${x[0]-1}"]`)).forEach(x=>{const li=document.createElement('li');li.innerHTML=`<a class="row" data-m="${x[0]-1}" href="#book"><span class="nm">${esc(x[1])}${PRICE[x[0]]!=null?' · Rs '+PRICE[x[0]]:''}</span><span class="go">Book<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8h11M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></span></a>`;const o=ul.querySelector('[data-m="12"]');o?ul.insertBefore(li,o.parentElement):ul.append(li)});
+  ids.size&&slots()}
+ const md=d.media||[],teach=md.filter(m=>m.section==='teach'),studio=md.filter(m=>m.section==='studio');
+ const cl=$('#academy .clips');if(cl){cl.innerHTML=teach.map(m=>m.kind==='video'?`<li><button type="button" class="clip" data-src="${esc(murl(m.path))}" data-poster="${esc(m.poster?murl(m.poster):'')}" data-title="${esc(m.title)}" aria-label="Play video: ${esc(m.title)}"><img src="${esc(m.poster?murl(m.poster):'/images/general/og-image.jpg')}" alt="${esc(m.title)}" width="540" height="960" loading="lazy" decoding="async"><span class="pl" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></span><span class="cap">${esc(m.title)}</span></button></li>`:`<li><img class="clip-img" src="${esc(murl(m.path))}" alt="${esc(m.title)}" width="540" height="960" loading="lazy" decoding="async"></li>`).join('');cl.closest('.clips-wrap').hidden=!teach.length}
+ const g=$('#studio .grid');if(g){g.innerHTML=studio.map(m=>m.kind==='video'?`<video src="${esc(murl(m.path))}" ${m.poster?`poster="${esc(murl(m.poster))}"`:''} controls playsinline preload="none" width="720" height="960" aria-label="${esc(m.title)}"></video>`:`<img src="${esc(murl(m.path))}" alt="${esc(m.title)}" width="720" height="960" loading="lazy" decoding="async">`).join('');$('#studio').hidden=!studio.length}
+}).catch(()=>{});
 const picked=root=>[...root.querySelectorAll('input[type=checkbox]:checked')].map(i=>+i.value);
-document.addEventListener('click',e=>{const a=e.target.closest('[data-m]');if(a&&+a.dataset.m<13){const c=svcs.querySelector(`input[value="${+a.dataset.m+1}"]`);if(c){c.checked=true;syncOther();slots()}}});
+document.addEventListener('click',e=>{const a=e.target.closest('[data-m]');if(a){const c=svcs.querySelector(`input[value="${+a.dataset.m+1}"]`);if(c){c.checked=true;syncOther();slots()}}});
 
 /* ---- dates and free times (Kathmandu time, UTC+05:45) ---- */
 const ktmNow=()=>new Date(Date.now()+345*60000),iso=d=>d.toISOString().slice(0,10);

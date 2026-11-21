@@ -50,6 +50,13 @@
       "when": 1794623475005,
       "tag": "0006_ticket_delete_cascades_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795235843489,
+      "tag": "0007_hours_5min_services_admin_media",
+      "breakpoints": true
     }
   ]
 }

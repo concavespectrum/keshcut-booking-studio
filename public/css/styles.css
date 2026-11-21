@@ -198,3 +198,6 @@ dialog.vid{width:fit-content;max-width:calc(100vw - 16px)}
 .kc-bk,.kc-mine h3{overflow-wrap:anywhere}
 .kc-chk{min-height:32px}.kc-chk input{flex-shrink:0}
 @media(max-width:759px){.ticket textarea,.kc-chatf textarea,.kc-chatid input{font-size:16px}.kc-row .lk{min-height:44px}.kc-chat-btn{bottom:calc(8px + env(safe-area-inset-bottom,0px));padding:8px 12px;min-height:44px}.kc-col{padding-bottom:48px}.kc-chat .lg-head{padding:10px 16px}.kc-chat .lg-head h2{font-size:1.35rem}}
+.grid video{display:block;width:100%;aspect-ratio:3/4;object-fit:cover;background:#000}
+[data-dev=mobile] .grid video{flex:0 0 58%;width:58%;aspect-ratio:4/5;scroll-snap-align:center}
+.clips .clip-img{display:block;width:100%;aspect-ratio:4/5;object-fit:cover}

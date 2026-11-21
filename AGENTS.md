@@ -39,3 +39,5 @@ use the editor.
 - Custom-service booking wrappers validate and store details atomically with the existing customer RPCs; reuse server-owned service durations and ownership checks.
 - Ticket exports use authenticated server functions with RLS and CSV formula escaping; permanent deletion uses an admin-checking SQL function to cascade only ticket services and update visit counts.
 - Generate crawler URLs and browser safety headers in the server entry so published and custom domains never expose placeholder sitemap URLs.
+- Homepage services, prices and gallery media load from `/api/public/kc?site=1`; uploaded media live in the private `site-media` bucket and are served via signed-URL redirects (`?file=`), because public buckets are blocked in this workspace.
+- Admin catalog edits (services, media, reschedule) use the browser client under `is_admin()` RLS/RPC; replaced or removed media files are deleted from storage in the same action to save space.

@@ -309,7 +309,7 @@ export type Database = {
         Insert: {
           bookable?: boolean
           duration_min: number
-          id: number
+          id?: number
           name: string
           price_npr?: number | null
           sort?: number
@@ -324,6 +324,39 @@ export type Database = {
         }
         Relationships: []
       }
+      site_media: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          path: string
+          poster: string | null
+          section: string
+          sort: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          path: string
+          poster?: string | null
+          section: string
+          sort?: number
+          title?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          path?: string
+          poster?: string | null
+          section?: string
+          sort?: number
+          title?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -335,6 +368,10 @@ export type Database = {
         Returns: boolean
       }
       kc_admin_delete_ticket: { Args: { p_id: string }; Returns: Json }
+      kc_admin_reschedule: {
+        Args: { p_id: string; p_start: string }
+        Returns: Json
+      }
       kc_busy: { Args: { p_day: string }; Returns: Json }
       kc_cancel: { Args: { p_hash: string; p_ticket: string }; Returns: Json }
       kc_check_time: {

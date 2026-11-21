@@ -23,8 +23,8 @@ const ERR = {
 } satisfies Record<string, [number, string]>;
 type ErrKey = keyof typeof ERR;
 const bodySchema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("book"), start: z.string().datetime({ offset: true }), services: z.array(z.number().int().min(1).max(13)).min(1).max(6), custom: z.string().max(500).optional(), name: z.string().trim().min(1).max(80), phone: z.string().min(9).max(20) }).strict(),
-  z.object({ action: z.literal("update"), ticket: z.string().regex(/^KC-[A-Z2-9]{6}$/), services: z.array(z.number().int().min(1).max(13)).min(1).max(6), custom: z.string().max(500).optional() }).strict(),
+  z.object({ action: z.literal("book"), start: z.string().datetime({ offset: true }), services: z.array(z.number().int().min(1).max(32767)).min(1).max(6), custom: z.string().max(500).optional(), name: z.string().trim().min(1).max(80), phone: z.string().min(9).max(20) }).strict(),
+  z.object({ action: z.literal("update"), ticket: z.string().regex(/^KC-[A-Z2-9]{6}$/), services: z.array(z.number().int().min(1).max(32767)).min(1).max(6), custom: z.string().max(500).optional() }).strict(),
   z.object({ action: z.literal("cancel"), ticket: z.string().regex(/^KC-[A-Z2-9]{6}$/) }).strict(),
   z.object({ action: z.literal("message"), body: z.string().min(1).max(1000), name: z.string().max(80).optional(), phone: z.string().max(20).optional() }).strict(),
 ]);
@@ -64,7 +64,7 @@ function fail(error: { message?: string; code?: string } | null) {
   return json({ error: "Something went wrong. Please try again." }, 500);
 }
 const ids = (v: unknown) =>
-  Array.isArray(v) ? [...new Set(v.map(Number).filter((n) => Number.isInteger(n) && n > 0 && n < 100))].slice(0, 6) : [];
+  Array.isArray(v) ? [...new Set(v.map(Number).filter((n) => Number.isInteger(n) && n > 0 && n < 32768))].slice(0, 6) : [];
 
 export const Route = createFileRoute("/api/public/kc")({
   server: {
@@ -72,6 +72,21 @@ export const Route = createFileRoute("/api/public/kc")({
       GET: async ({ request }) => {
         const url = new URL(request.url);
         const sb = await db();
+        if (url.searchParams.has("site")) {
+          const [sv, md] = await Promise.all([
+            sb.from("services").select("id,name,duration_min,price_npr").eq("bookable", true).order("sort").order("id"),
+            sb.from("site_media").select("id,section,kind,path,poster,title").order("sort").order("created_at"),
+          ]);
+          if (sv.error || md.error) return fail(sv.error || md.error);
+          return json({ services: sv.data, media: md.data }, 200, { "cache-control": "public, max-age=30" });
+        }
+        const file = url.searchParams.get("file");
+        if (file) {
+          if (!/^(teach|studio)\/[a-z0-9-]{8,64}\.(webp|jpg|mp4|webm|mov)$/.test(file)) return json({ error: "bad file" }, 400);
+          const { data, error } = await sb.storage.from("site-media").createSignedUrl(file, 86400);
+          if (error || !data) return json({ error: "not found" }, 404);
+          return new Response(null, { status: 302, headers: { location: data.signedUrl, "cache-control": "public, max-age=3600" } });
+        }
         const day = url.searchParams.get("busy");
         if (day) {
           if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return json({ error: "bad date" }, 400);
